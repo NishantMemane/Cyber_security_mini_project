@@ -9,7 +9,13 @@ from flask import Flask, abort, current_app, jsonify, request, url_for
 from flask_cors import CORS
 from werkzeug.exceptions import BadRequest, HTTPException
 
-from database import (
+import sys
+from pathlib import Path
+
+# Add the parent directory to sys.path so we can import from the database folder
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
+from database.database import (
     add_comment,
     get_post as db_get_post,
     init_app as init_database,
