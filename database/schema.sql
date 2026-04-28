@@ -1,3 +1,5 @@
+-- Active: 1775548103799@@127.0.0.1@3306@mysql
+--schema.sql
 CREATE TABLE IF NOT EXISTS posts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,

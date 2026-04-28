@@ -1,3 +1,4 @@
+#app.py
 from __future__ import annotations
 
 from collections import deque
@@ -148,7 +149,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 "HTML clients must output-encode the returned text before inserting it into the DOM.",
                 "The vulnerable and secure comment sets are isolated by the is_secure flag.",
             ],
-            safe_demo_payload='<script>alert("XSS Attack!")</script>',
+            safe_demo_payload='<script>document.body.style.background="red";</script>',
         )
 
     return app

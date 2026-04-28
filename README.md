@@ -54,11 +54,11 @@ curl http://127.0.0.1:5000/
 
 curl -X POST http://127.0.0.1:5000/post/1 `
   -H "Content-Type: application/json" `
-  -d "{\"name\":\"Attacker\",\"comment\":\"<script>alert('XSS Attack!')</script>\"}"
+  -d "{\"name\":\"Attacker\",\"comment\":\"<script>document.body.style.background='red';</script>\"}"
 
 curl -X POST http://127.0.0.1:5000/secure/post/1 `
   -H "Content-Type: application/json" `
-  -d "{\"name\":\"Student\",\"comment\":\"<script>alert('XSS Attack!')</script>\"}"
+  -d "{\"name\":\"Student\",\"comment\":\"<script>document.body.style.background='red';</script>\"}"
 ```
 
 Both endpoints store the payload exactly as submitted. The difference is the

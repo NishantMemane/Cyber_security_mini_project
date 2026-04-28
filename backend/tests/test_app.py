@@ -45,7 +45,7 @@ def test_homepage_returns_seeded_posts(client):
 
 
 def test_vulnerable_comment_is_stored_raw(client):
-    payload = '<script>alert("XSS Attack!")</script>'
+    payload = '<script>document.body.style.background="red";</script>'
 
     create_response = client.post(
         "/post/1",
@@ -65,7 +65,7 @@ def test_vulnerable_comment_is_stored_raw(client):
 
 
 def test_secure_comment_is_stored_raw_and_returns_data_only_json(client):
-    payload = '<script>alert("XSS Attack!")</script>'
+    payload = '<script>document.body.style.background="red";</script>'
 
     response = client.post(
         "/secure/post/1",
